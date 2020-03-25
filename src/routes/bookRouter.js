@@ -20,36 +20,53 @@ const upload = multer({
 });
 
 router.post('/', auth, async (req, res) => {
-    if (req.user.role === 'librarian') {
-        const book = new Book({
-            name: req.body.name,
-            ISBN: req.body.ISBN,
-            price: req.body.price,
-            pages: req.body.pages,
-            quantity: req.body.quantity
-        });
+    try {
+        if (req.user.role === 'librarian') {
+            const book = new Book({
+                title: req.body.title,
+                ISBN: req.body.ISBN,
+                price: req.body.price,
+                pages: req.body.pages,
+                quantity: req.body.quantity
+            });
 
-        const authors = req.body.authors;
-        authors.forEach(author => {
-            book.authors.push(author);
-        });
-        await book.save();
-    }else{
-        res.status(400).send({error: 'Only librarian can add books'})
+            const authors = req.body.authors;
+            authors.forEach(author => {
+                book.authors.push(author);
+            });
+            await book.save();
+            res.status(201).send(book);
+        } else {
+            res.status(400).send({ error: 'Only librarian can add books' })
+        }
+    } catch (error) {
+        res.status(500).send({ error: error.message });
     }
 });
 
-router.post('/upload/:bookId', auth, upload.single('cover'), async (req, res) => {
+router.post('/addcover/:ISBN', auth, upload.single('cover'), async (req, res) => {
     if (req.user.role === 'librarian') {
-        const bookId = req.params.bookId;
-        const book = await Book.findOne({ _id: bookId });
-        const buffer = await sharp(req.file.buffer).resize({ width: 250, height: 500 }).png().toBuffer();
-        await book.uploadCover(buffer);
+        try {
+            const isbn = req.params.ISBN;
+            const book = await Book.findOne({ ISBN: isbn });
+            const buffer = req.file.buffer;
+            console.log(req.file)
+            await book.uploadCover(buffer);
+            res.status(200).send(book.cover);
+        }catch(error){
+            res.status(500).send({error: error.message})
+        }
     } else {
         res.status(400).send({ error: 'Only librarian can upload covers' });
     }
 }, (error, req, res, next) => {
     res.status(400).send({ error: error.message });
 });
+
+router.get('/listallbooks', auth, async (req, res) => {
+    const books = await Book.find();
+    res.status(200).send(books);
+});
+
 
 module.exports = router;

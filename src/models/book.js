@@ -15,6 +15,7 @@ const bookSchema = mongoose.Schema({
     },
     ISBN: {
         type: Number,
+        unique: true,
         min: [1000000000, 'ISBN should be of 10-12 numbers long'],
         max: [999999999999, 'ISBN should be of 10-12 numbers long']
     },
@@ -23,7 +24,7 @@ const bookSchema = mongoose.Schema({
         required: true
     },
     cover: {
-        type: Buffer,
+        type: Buffer
     },
     pages: {
         type: Number,
@@ -43,6 +44,7 @@ bookSchema.virtual('user', {
 });
 
 bookSchema.methods.uploadCover = async function (buffer) {
+    console.log('adding cover');
     this.cover = buffer;
     await this.save();
 }

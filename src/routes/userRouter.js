@@ -69,7 +69,7 @@ router.post('/logoutall', auth, async (req, res) => {
     }
 });
 
-router.get('/profile/:id', async (req, res) => {
+router.get('/profile/:id', auth,async (req, res) => {
     const id = req.params.id;
 
     const user = await User.findOne({_id: id}).populate('books').exec();
@@ -77,7 +77,7 @@ router.get('/profile/:id', async (req, res) => {
     res.status(200).send(user);
 });
 
-router.get('/allusers', async (req, res) => {
+router.get('/allusers', auth ,async (req, res) => {
     const users = await User.find();
     res.status(400).send(users);
 });
