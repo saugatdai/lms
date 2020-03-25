@@ -6,10 +6,9 @@ const bookSchema = mongoose.Schema({
         required: true
     },
     authors: [{
-        author: {
-            type: mongoose.Schema.Types.ObjectId,
-            required: true
-        }
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'Author'
     }],
     issuedOn: {
         type: Date
@@ -25,7 +24,6 @@ const bookSchema = mongoose.Schema({
     },
     cover: {
         type: Buffer,
-        requied: true
     },
     pages: {
         type: Number,
@@ -41,8 +39,22 @@ const bookSchema = mongoose.Schema({
 bookSchema.virtual('user', {
     ref: 'User',
     localField: '_id',
-    foreignField: 'bookIssued'
+    foreignField: 'booksIssued'
 });
+
+bookSchema.methods.uploadCover = async function (buffer) {
+    this.cover = buffer;
+    await this.save();
+}
+
+bookSchema.methods.toJSON = function () {
+    const book = this;
+    const bookObject = this.toObject();
+
+    delete bookObject.__v;
+
+    return bookObject;
+}
 
 const Book = mongoose.model('Book', bookSchema);
 

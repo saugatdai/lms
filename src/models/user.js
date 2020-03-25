@@ -47,10 +47,8 @@ const userSchema = mongoose.Schema({
         ref: 'Department'
     },
     booksIssued: [{
-        book: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Book'
-        }
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Book'
     }],
     tokens: [{
         token: {
@@ -67,6 +65,16 @@ userSchema.pre('save', async function () {
         user.password = await bcrypt.hash(user.password, 8);
     }
 });
+
+userSchema.methods.toJSON = function(){
+    const user = this;
+    const userObject = user.toObject();
+    delete userObject.password;
+    delete userObject.tokens;
+    delete userObject.__v;
+
+    return userObject;
+}
 
 userSchema.statics.findByCredentials = async (email, password) => {
     const user = await User.findOne({ email });

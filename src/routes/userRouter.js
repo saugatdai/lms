@@ -69,7 +69,18 @@ router.post('/logoutall', auth, async (req, res) => {
     }
 });
 
+router.get('/profile/:id', async (req, res) => {
+    const id = req.params.id;
 
+    const user = await User.findOne({_id: id}).populate('books').exec();
+
+    res.status(200).send(user);
+});
+
+router.get('/allusers', async (req, res) => {
+    const users = await User.find();
+    res.status(400).send(users);
+});
 
 
 module.exports = router;
