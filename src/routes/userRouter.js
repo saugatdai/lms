@@ -71,16 +71,25 @@ router.post('/logoutall', auth, async (req, res) => {
 });
 
 router.get('/profile/:id', auth, async (req, res) => {
-    const id = req.params.id;
-
-    const user = await User.findOne({ _id: id }).populate('books').exec();
-
-    res.status(200).send(user);
+    console.log(req.user._id.toString(), 'And : ', req.params.id);
+    if (req.user.role === 'librarian') {
+        const id = req.params.id;
+        const user = await User.findOne({ _id: id }).populate('booksIssued.books').exec();
+        res.status(200).send(user);
+    } else if (req.user._id.toString() === req.params.id) {
+        res.status(200).send(req.user);
+    } else {
+        res.status(400).send({ error: "you are not allowed to view other's profile" });
+    }
 });
 
 router.get('/allusers', auth, async (req, res) => {
-    const users = await User.find();
-    res.status(400).send(users);
+    if (req.user.role === 'librarian') {
+        const users = await User.find();
+        res.status(400).send(users);
+    }else{
+        res.status(400).send({error: 'Only Librarian has this authority'});
+    }
 });
 
 router.patch('/updateuser/:id', auth, async (req, res) => {
@@ -112,9 +121,9 @@ router.post('/issuebook/:userid', auth, async (req, res) => {
                 date: new Date()
             }
 
-            if(user.role === 'student' && user.booksIssued.length >= 5){
+            if (user.role === 'student' && user.booksIssued.length >= 5) {
                 throw new Error('Can not issue more than 5 books for student');
-            }else if(user.role === 'staff' && user.booksIssued.length >= 7){
+            } else if (user.role === 'staff' && user.booksIssued.length >= 7) {
                 throw new Error('Can not issue more than 7 books for staff');
             }
 
@@ -126,8 +135,8 @@ router.post('/issuebook/:userid', auth, async (req, res) => {
                         throw new Error('Book is already issued');
                     }
                     console.log(bookObject.ISBN, req.body.ISBN);
-                }catch(error){
-                    res.status(400).send({error: error.message});
+                } catch (error) {
+                    res.status(400).send({ error: error.message });
                 }
             });
 
@@ -146,7 +155,36 @@ router.post('/issuebook/:userid', auth, async (req, res) => {
     }
 });
 
+router.post('/returnbook/:userid', auth, async (req, res) => {
 
+    if (res.user.role === 'librarian') {
+        //first check if the user has the book
+        const user = await User.findOne({ _id: req.params.userid }).populate('booksIssued.book').exec();
 
+        const returnedBook = user.booksIssued.find(issuedObject => issuedObject.book.ISBN === req.body.ISBN);
+
+        try {
+            if (returnedBook) {
+                user.booksIssued = user.booksIssued.filter(issuedObject => {
+                    if (issuedObject.book.ISBN === req.body.ISBN) {
+                        returnedBook.book.quantity = returnedBook.book.quantity + 1;
+                        return false;
+                    } else {
+                        return true;
+                    }
+                });
+                await returnedBook.book.save();
+                await user.save();
+                res.status(200).send(returnedBook.book);
+            } else {
+                throw new Error('The book  is not issued by the user');
+            }
+        } catch (error) {
+            res.status(400).send({ error: error.message });
+        }
+    } else {
+        res.status(400).send({ error: 'Only librarians are allowed to return books' });
+    }
+});
 
 module.exports = router;
