@@ -42,13 +42,14 @@ const userSchema = mongoose.Schema({
         type: String,
         rquired: true
     },
-    department: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Department'
-    },
     booksIssued: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Book'
+        book: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Book',
+        },
+        date: {
+            type: Date
+        }
     }],
     tokens: [{
         token: {
@@ -66,7 +67,9 @@ userSchema.pre('save', async function () {
     }
 });
 
-userSchema.methods.toJSON = function(){
+
+
+userSchema.methods.toJSON = function () {
     const user = this;
     const userObject = user.toObject();
     delete userObject.password;

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Path = require('path');
 
 const bookSchema = mongoose.Schema({
     title: {
@@ -10,9 +11,6 @@ const bookSchema = mongoose.Schema({
         required: true,
         ref: 'Author'
     }],
-    issuedOn: {
-        type: Date
-    },
     ISBN: {
         type: Number,
         unique: true,
@@ -24,7 +22,7 @@ const bookSchema = mongoose.Schema({
         required: true
     },
     cover: {
-        type: Buffer
+        type: String
     },
     pages: {
         type: Number,
@@ -43,9 +41,10 @@ bookSchema.virtual('user', {
     foreignField: 'booksIssued'
 });
 
-bookSchema.methods.uploadCover = async function (buffer) {
+bookSchema.methods.uploadCover = async function (file) {
     console.log('adding cover');
-    this.cover = buffer;
+    const pathForSave = Path.join(__dirname, '../../', file.path);
+    this.cover = pathForSave;
     await this.save();
 }
 
