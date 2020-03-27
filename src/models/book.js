@@ -38,7 +38,7 @@ const bookSchema = mongoose.Schema({
 bookSchema.virtual('user', {
     ref: 'User',
     localField: '_id',
-    foreignField: 'booksIssued'
+    foreignField: 'booksIssued.book'
 });
 
 bookSchema.methods.uploadCover = async function (file) {

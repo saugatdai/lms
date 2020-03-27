@@ -87,8 +87,8 @@ router.get('/allusers', auth, async (req, res) => {
     if (req.user.role === 'librarian') {
         const users = await User.find();
         res.status(400).send(users);
-    }else{
-        res.status(400).send({error: 'Only Librarian has this authority'});
+    } else {
+        res.status(400).send({ error: 'Only Librarian has this authority' });
     }
 });
 
@@ -184,6 +184,63 @@ router.post('/returnbook/:userid', auth, async (req, res) => {
         }
     } else {
         res.status(400).send({ error: 'Only librarians are allowed to return books' });
+    }
+});
+
+router.get('/mybooks/:id', auth, async (req, res) => {
+    if (req.user._id.toString() === req.params.id || req.user.role === 'librarian') {
+        const userWithBooks = await User.findOne({ _id: req.params.id }).populate('booksIssued.book').exec();
+
+        const issuedBooks = [];
+
+        userWithBooks.booksIssued.forEach(bookObject => {
+            let remainingDays = Math.ceil((bookObject.date.getTime() + 3600 * 1000 * 5 * 24 - new Date().getTime()) /
+                (3600 * 24 * 1000));
+            let fine = (remainingDays < 0) ? Math.abs(remainingDays) * 2 : 0;
+
+            const bookInfo = {
+                title: bookObject.book.title,
+                ISBN: bookObject.book.ISBN,
+                issuedOn: bookObject.date,
+                remainingDays,
+                fine
+            }
+
+            issuedBooks.push(bookInfo);
+
+        });
+
+
+        res.status(200).send(issuedBooks);
+    } else {
+        res.status(400).send({ error: "Can't See other's book" });
+    }
+
+});
+
+router.delete('/deleteuser/:id', auth, async (req, res) => {
+    try {
+        if (req.user.role === 'librarian') {
+            //get the user first
+            const user = await User.findOne({ _id: req.params.id });
+            if(!user){
+                throw new Error("The User Doesn't Exist");
+            }
+            if (user.booksIssued.length > 0) {
+                res.status(400).send({ error: 'Can not Delete! The user has ' + user.booksIssued.length + ' books to return' });
+            } else {
+                const status = await User.deleteOne({ _id: req.params.id });
+                if (parseInt(status.deletedCount) > 0) {
+                    res.status(200).send(status);
+                } else {
+                    res.status(400).send({ error: "User doesn't exist" });
+                }
+            }
+        } else {
+            res.status(400).send({ error: 'Only librarians can delete users' });
+        }
+    }catch(error){
+        res.status(500).send({error: error.message});
     }
 });
 
