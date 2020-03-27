@@ -1,6 +1,8 @@
+const fs = require('fs');
+
 const express = require('express');
 const multer = require('multer');
-const fs = require('fs');
+const sharp = require('sharp');
 
 const auth = require('../auth/auth');
 const Book = require('../models/book');
@@ -68,11 +70,14 @@ router.get('/getbookcover/:ISBN', async (req, res) => {
         const book = await Book.findOne({ ISBN: req.params.ISBN });
         if (!book) {
             throw new Error('Cannot Find book with ISBN : ' + req.ISBN);
+        } else if (!book.cover) {
+            throw new Error('No cover for requested book');
         } else {
             //get the file first
             const file = fs.readFileSync(book.cover);
+            const fileToSend = await sharp(file).resize({ width: 250, height: 500 }).png().toBuffer();
             res.set('Content-Type', 'image/jpg');
-            res.status(200).send(file);
+            res.status(200).send(fileToSend);
         }
     } catch (error) {
         res.status(500).send({ error: error.message });

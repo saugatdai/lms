@@ -114,6 +114,9 @@ router.post('/issuebook/:userid', auth, async (req, res) => {
     try {
         if (req.user.role === 'librarian') {
             const book = await Book.findOne({ ISBN: req.body.ISBN });
+            if(book.quantity === 0){
+                throw new Error("No more books left");
+            }
             const user = await User.findOne({ _id: req.params.userid });
 
             const bookObject = {
