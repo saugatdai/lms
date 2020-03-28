@@ -71,7 +71,6 @@ router.post('/logoutall', auth, async (req, res) => {
 });
 
 router.get('/profile/:id', auth, async (req, res) => {
-    console.log(req.user._id.toString(), 'And : ', req.params.id);
     if (req.user.role === 'librarian') {
         const id = req.params.id;
         const user = await User.findOne({ _id: id }).populate('booksIssued.books').exec();
@@ -86,27 +85,33 @@ router.get('/profile/:id', auth, async (req, res) => {
 router.get('/allusers', auth, async (req, res) => {
     if (req.user.role === 'librarian') {
         const users = await User.find();
-        res.status(400).send(users);
+        res.status(200).send(users);
     } else {
         res.status(400).send({ error: 'Only Librarian has this authority' });
     }
 });
 
 router.patch('/updateuser/:id', auth, async (req, res) => {
-    if (req.user.role === 'librarian') {
-        const user = await User.findOne({ _id: req.params.id });
+    try {
+        if (req.user.role === 'librarian') {
+            const user = await User.findOne({ _id: req.params.id });
+            if(!user){
+                throw new Error('Non Existant user');
+            }
+            user.name = req.body.name;
+            user.age = req.body.age;
+            user.email = req.body.email;
+            user.password = req.body.password;
+            user.role = req.body.role;
 
-        user.name = req.body.name;
-        user.age = req.body.age;
-        user.email = req.body.email;
-        user.password = req.body.password;
-        user.role = req.body.role;
+            await user.save();
 
-        await user.save();
-
-        res.status(200).send({ message: 'idont know' });
-    } else {
-        res.status(500).send({ error: 'Only librarians can update users' });
+            res.status(200).send({ message: 'idont know' });
+        } else {
+            res.status(400).send({ error: 'Only librarians can update users' });
+        }
+    }catch(error){
+        res.status(500).send({error: error.message});
     }
 });
 
@@ -114,7 +119,7 @@ router.post('/issuebook/:userid', auth, async (req, res) => {
     try {
         if (req.user.role === 'librarian') {
             const book = await Book.findOne({ ISBN: req.body.ISBN });
-            if(book.quantity === 0){
+            if (book.quantity === 0) {
                 throw new Error("No more books left");
             }
             const user = await User.findOne({ _id: req.params.userid });
@@ -160,7 +165,7 @@ router.post('/issuebook/:userid', auth, async (req, res) => {
 
 router.post('/returnbook/:userid', auth, async (req, res) => {
 
-    if (res.user.role === 'librarian') {
+    if (req.user.role === 'librarian') {
         //first check if the user has the book
         const user = await User.findOne({ _id: req.params.userid }).populate('booksIssued.book').exec();
 
@@ -226,7 +231,7 @@ router.delete('/deleteuser/:id', auth, async (req, res) => {
         if (req.user.role === 'librarian') {
             //get the user first
             const user = await User.findOne({ _id: req.params.id });
-            if(!user){
+            if (!user) {
                 throw new Error("The User Doesn't Exist");
             }
             if (user.booksIssued.length > 0) {
@@ -242,8 +247,8 @@ router.delete('/deleteuser/:id', auth, async (req, res) => {
         } else {
             res.status(400).send({ error: 'Only librarians can delete users' });
         }
-    }catch(error){
-        res.status(500).send({error: error.message});
+    } catch (error) {
+        res.status(500).send({ error: error.message });
     }
 });
 
