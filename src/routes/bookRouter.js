@@ -122,36 +122,43 @@ router.patch('/updatebook/:isbn', auth, async (req, res) => {
     }
 });
 
-router.get('/issuer/:ISBN', async (req, res) => {
-    const book = await Book.findOne({ ISBN: req.params.ISBN }).populate('user').exec();
+router.get('/issuer/:ISBN', auth, async (req, res) => {
+    try {
+        if (req.user.role === 'librarian') {
+            const book = await Book.findOne({ ISBN: req.params.ISBN }).populate('user').exec();
+            const issuers = [];
 
-    const issuers = [];
-
-    if (book.user.length > 0) {
-        book.user.forEach(async user => {
-            let remainingDays = null;
-            let fine = null;
-            const bookInfo = await user.populate('booksIssued.books').execPopulate();
-            bookInfo.booksIssued.forEach(bookIssued => {
-                if (bookIssued.book.toString() === book._id.toString()) {
-                    remainingDays = Math.ceil((bookIssued.date.getTime() + 1000 * 3600 * 24 * 5 - new Date().getTime()) /
-                        (3600 * 25 * 1000));
-                    fine = (remainingDays < 0) ? Math.abs(remainingDays) * 2 : 0;
-                }
-            });
-            let issuer = {
-                _id: user._id,
-                name: user.name,
-                role: user.role,
-                email: user.email,
-                remainingDays,
-                fine
-            };
-            issuers.push(issuer);
-            res.status(200).send(issuers);
-        });
-    } else {
-        res.status(200).send({ message: "No issuers found for this book" });
+            if (book.user.length > 0) {
+                book.user.forEach(async user => {
+                    let remainingDays = null;
+                    let fine = null;
+                    const bookInfo = await user.populate('booksIssued.books').execPopulate();
+                    bookInfo.booksIssued.forEach(bookIssued => {
+                        if (bookIssued.book.toString() === book._id.toString()) {
+                            remainingDays = Math.ceil((bookIssued.date.getTime() + 1000 * 3600 * 24 * 5 - new Date().getTime()) /
+                                (3600 * 25 * 1000));
+                            fine = (remainingDays < 0) ? Math.abs(remainingDays) * 2 : 0;
+                        }
+                    });
+                    let issuer = {
+                        _id: user._id,
+                        name: user.name,
+                        role: user.role,
+                        email: user.email,
+                        remainingDays,
+                        fine
+                    };
+                    issuers.push(issuer);
+                    res.status(200).send(issuers);
+                });
+            } else {
+                res.status(200).send({ message: "No issuers found for this book" });
+            }
+        }else{
+            res.status(400).send({error: "Only librarian can view issue details"});
+        }
+    } catch (error) {
+        res.status(500).send(error.message)
     }
 });
 

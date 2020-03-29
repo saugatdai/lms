@@ -101,7 +101,7 @@ test('librarians can add a book', async () => {
             "title": "The complete IOT design",
             "ISBN": 9813273310,
             "price": 456,
-            "pages" : 305,
+            "pages": 305,
             "quantity": 1,
             "authors": ["5e7b70190dcf9f6a696cdd11"]
         }).expect(201);
@@ -114,7 +114,7 @@ test('Normal users can not add a book', async () => {
             "title": "The complete IOT design",
             "ISBN": 9813273310,
             "price": 456,
-            "pages" : 305,
+            "pages": 305,
             "quantity": 1,
             "authors": ["5e7b70190dcf9f6a696cdd11"]
         }).expect(400);
@@ -122,6 +122,54 @@ test('Normal users can not add a book', async () => {
 
 test('All users can view books list in library', async () => {
     request(app).get('/listallbooks')
-    .set('Authorization', `Bearer ${userTwo.tokens[0].token}`)
+        .set('Authorization', `Bearer ${userTwo.tokens[0].token}`)
+        .send().expect(200);
+});
+
+test('Librarians can add additional quantities of existing books', async () => {
+    await request(app).patch('/book/addbooks').
+        set('Authorization', `Bearer ${userTwo.tokens[0].token}`)
+        .send({
+            "ISBN": "9876543210",
+            "quantity": 30
+        }).expect(400);
+});
+
+test('Librarians can update books', async () => {
+    await request(app).patch('/book/updatebook/9867053771')
+        .set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+        .send({
+            "title": "The Alchemy of Love and Spirituality",
+            "ISBN": 9867053771,
+            "authors": [author1._id.toString(), author2._id.toString()],
+            "price": 1024,
+            "pages": 756,
+            "quantity": 13
+        }).expect(200);
+});
+
+
+test('Librarians can get issuers of a particluar book', async() =>{
+    await request(app).get('/book/issuer/9843438627')
+    .set('Authorization', `Bearer ${userOne.tokens[0].token}`)
     .send().expect(200);
+});
+
+
+test('Normal users can not get issuers of a particular book', async () => {
+    await request(app).get('/book/issuer/9843438627').
+    set('Authorization', `Bearer ${userTwo.tokens[0].token}`)
+    .send().expect(400);
+});
+
+test('Librarians can delete a book', async () => {
+    await request(app).delete('/book/deletebook/9867053771').
+    set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+    .send().expect(200);
+});
+
+test('Other Users can not delete a book', async () => {
+    await request(app).delete('/book/deletebook/9867053771').
+    set('Authorization', `Bearer ${userTwo.tokens[0].token}`)
+    .send().expect(400);
 });
