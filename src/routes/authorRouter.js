@@ -17,7 +17,7 @@ router.post('/', auth, async (req, res) => {
 
         res.status(201).send(author);
     } else {
-        res.status(200).send({ error: 'Only Librarian can add Authors' });
+        res.status(400).send({ error: 'Only Librarian can add Authors' });
     }
 });
 
@@ -27,19 +27,23 @@ router.get('/listall', auth, async (req, res) => {
 });
 
 router.get('/profile/:id', auth, async (req, res) => {
-    const id = req.params.id;
+    try {
+        const id = req.params.id;
 
-    console.log(id);
-    const author = await Author.findOne({ _id: id }).populate('books').exec();
+        const author = await Author.findOne({ _id: id }).populate('books').exec();
 
-    res.status(200).send({ author: author, books: author.books });
+        res.status(200).send({ author: author, books: author.books });
+    }catch(error){
+        console.log(error.message);
+        res.status(500).send(error.message);
+    }
 });
 
 router.delete('/deleteauthor/:id', auth, async (req, res) => {
     if (req.user.role === 'librarian') {
         try {
             const author = await Author.findOne({ _id: req.params.id }).populate('books').exec();
-            if(!author){
+            if (!author) {
                 throw new Error('Cannot find the author');
             }
             //first remove the books and authors from books
@@ -59,6 +63,6 @@ router.delete('/deleteauthor/:id', auth, async (req, res) => {
         }
 
     } else {
-        req.status(400).send({ error: 'Only librarian can delete author' });
+        res.status(400).send({ error: 'Only librarian can delete author' });
     }
 });
