@@ -105,7 +105,7 @@ router.patch('/updateuser/:id', auth, async (req, res) => {
 
             await user.save();
 
-            res.status(200).send({ message: 'idont know' });
+            res.status(200).send({ message: 'User Updated!!' });
         } else {
             res.status(400).send({ error: 'Only librarians can update users' });
         }
