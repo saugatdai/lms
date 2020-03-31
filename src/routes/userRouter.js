@@ -94,7 +94,7 @@ router.patch('/updateuser/:id', auth, async (req, res) => {
     try {
         if (req.user.role === 'librarian') {
             const user = await User.findOne({ _id: req.params.id });
-            if(!user){
+            if (!user) {
                 throw new Error('Non Existant user');
             }
             user.name = req.body.name;
@@ -109,12 +109,24 @@ router.patch('/updateuser/:id', auth, async (req, res) => {
         } else {
             res.status(400).send({ error: 'Only librarians can update users' });
         }
-    }catch(error){
-        res.status(500).send({error: error.message});
+    } catch (error) {
+        res.status(500).send({ error: error.message });
     }
 });
 
 router.post('/issuebook/:userid', auth, async (req, res) => {
+
+    const isBookIssued = async (user, book) => {
+        const issuedBook = await user.booksIssued.map(async (book) => {
+            const bookObject = await Book.findOne({ _id: book.book });
+            const result = await bookObject.ISBN === req.body.ISBN;
+            return result;
+        });
+        const result = await Promise.all(issuedBook);
+        
+        return result.find(element => element);
+    }
+    
     try {
         if (req.user.role === 'librarian') {
             const book = await Book.findOne({ ISBN: req.body.ISBN });
@@ -133,31 +145,23 @@ router.post('/issuebook/:userid', auth, async (req, res) => {
             } else if (user.role === 'staff' && user.booksIssued.length >= 7) {
                 throw new Error('Can not issue more than 7 books for staff');
             }
+            let issueStats = await isBookIssued(user, book);
+            if (!issueStats) {
+                user.booksIssued.push(bookObject);
+                book.quantity = book.quantity - 1;
 
-            user.booksIssued.forEach(async (book) => {
-                try {
-                    const bookObject = await Book.findOne({ _id: book.book });
-                    console.log(bookObject);
-                    if (bookObject.ISBN === req.body.ISBN) {
-                        throw new Error('Book is already issued');
-                    }
-                    console.log(bookObject.ISBN, req.body.ISBN);
-                } catch (error) {
-                    res.status(400).send({ error: error.message });
-                }
-            });
+                await user.save();
+                await book.save();
 
-            user.booksIssued.push(bookObject);
-            book.quantity = book.quantity - 1;
-
-            await user.save();
-            await book.save();
-
-            res.status(200).send({ book: book, issuer: user });
+                await res.status(200).send({ book: book, issuer: user });
+            } else {
+                res.status(400).send({ error: 'Book has already been issued' });
+            }
         } else {
             res.status(400).send('Only librarian can issue book for a user');
         }
     } catch (error) {
+        console.log(error);
         res.status(400).send({ error: error.message });
     }
 });
