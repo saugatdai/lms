@@ -123,44 +123,34 @@ router.patch('/updatebook/:isbn', auth, async (req, res) => {
 });
 
 router.get('/issuer/:ISBN', auth, async (req, res) => {
-    try {
-        if (req.user.role === 'librarian') {
-            const book = await Book.findOne({ ISBN: req.params.ISBN }).populate('user').exec();
-            let issuers = [];
-
-            if (book.user.length > 0) {
-                book.user.forEach(async user => {
-                    let remainingDays = null;
-                    let fine = null;
-                    const bookInfo = await user.populate('booksIssued.books').execPopulate();
-                    const issuers = bookInfo.booksIssued.map(bookIssued => {
-                        if (bookIssued.book.toString() === book._id.toString()) {
-                            remainingDays = Math.ceil((bookIssued.date.getTime() + 1000 * 3600 * 24 * 5 - new Date().getTime()) /
-                                (3600 * 25 * 1000));
-                            fine = (remainingDays < 0) ? Math.abs(remainingDays) * 2 : 0;
-
-                            let issuer = {
-                                _id: user._id,
-                                name: user.name,
-                                role: user.role,
-                                email: user.email,
-                                remainingDays,
-                                fine
-                            };
-                            return issuer;
-                        }
-                    });
-                });
-                res.status(200).send(issuers);
-            } else {
-                res.status(200).send({ message: "No issuers found for this book" });
-            }
-        } else {
-            res.status(400).send({ error: "Only librarian can view issue details" });
+    const issuers = [];
+    const book = await Book.findOne({ ISBN: req.params.ISBN }).populate({
+        path: 'user',
+        populate: {
+            path: 'booksIssued.book'
         }
-    } catch (error) {
-        res.status(500).send(error.message)
-    }
+    });
+    const issuingUsers = book.user.map(user => {
+        let issuerElement = {};
+        issuerElement.name = user.name;
+        issuerElement.role = user.role;
+        user.booksIssued.forEach(bookObject => {
+            if (bookObject.book.ISBN.toString() === req.params.ISBN) {
+                let remDays = Math.ceil((bookObject.date.getTime() + 1000 * 3600 * 24 * 5 -
+                    new Date().getTime()) / (3600 * 24 * 1000));
+
+                let fine = (remDays < 0) ? Math.abs(remDays * 2) : 0;
+
+                issuerElement.dateIssued = bookObject.date;
+                issuerElement.remainingDays = remDays;
+                issuerElement.fine = fine;
+                issuers.push(issuerElement);
+                console.log(issuerElement);
+            }
+        });
+    });
+    console.log(issuers);
+    res.status(200).send(issuers);
 });
 
 router.delete('/deletebook/:ISBN', auth, async (req, res) => {
