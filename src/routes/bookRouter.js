@@ -123,34 +123,37 @@ router.patch('/updatebook/:isbn', auth, async (req, res) => {
 });
 
 router.get('/issuer/:ISBN', auth, async (req, res) => {
-    const issuers = [];
-    const book = await Book.findOne({ ISBN: req.params.ISBN }).populate({
-        path: 'user',
-        populate: {
-            path: 'booksIssued.book'
-        }
-    });
-    const issuingUsers = book.user.map(user => {
-        let issuerElement = {};
-        issuerElement.name = user.name;
-        issuerElement.role = user.role;
-        user.booksIssued.forEach(bookObject => {
-            if (bookObject.book.ISBN.toString() === req.params.ISBN) {
-                let remDays = Math.ceil((bookObject.date.getTime() + 1000 * 3600 * 24 * 5 -
-                    new Date().getTime()) / (3600 * 24 * 1000));
-
-                let fine = (remDays < 0) ? Math.abs(remDays * 2) : 0;
-
-                issuerElement.dateIssued = bookObject.date;
-                issuerElement.remainingDays = remDays;
-                issuerElement.fine = fine;
-                issuers.push(issuerElement);
-                console.log(issuerElement);
+    if (req.user.role === 'librarian') {
+        const issuers = [];
+        const book = await Book.findOne({ ISBN: req.params.ISBN }).populate({
+            path: 'user',
+            populate: {
+                path: 'booksIssued.book'
             }
         });
-    });
-    console.log(issuers);
-    res.status(200).send(issuers);
+        const issuingUsers = book.user.map(user => {
+            let issuerElement = {};
+            issuerElement.name = user.name;
+            issuerElement.role = user.role;
+            user.booksIssued.forEach(bookObject => {
+                if (bookObject.book.ISBN.toString() === req.params.ISBN) {
+                    let remDays = Math.ceil((bookObject.date.getTime() + 1000 * 3600 * 24 * 5 -
+                        new Date().getTime()) / (3600 * 24 * 1000));
+
+                    let fine = (remDays < 0) ? Math.abs(remDays * 2) : 0;
+
+                    issuerElement.dateIssued = bookObject.date;
+                    issuerElement.remainingDays = remDays;
+                    issuerElement.fine = fine;
+                    issuers.push(issuerElement);
+                    console.log(issuerElement);
+                }
+            });
+        });
+        res.status(200).send(issuers);
+    }else{
+        res.status(400).send({error: "Only librarian has this authority"});
+    }
 });
 
 router.delete('/deletebook/:ISBN', auth, async (req, res) => {
